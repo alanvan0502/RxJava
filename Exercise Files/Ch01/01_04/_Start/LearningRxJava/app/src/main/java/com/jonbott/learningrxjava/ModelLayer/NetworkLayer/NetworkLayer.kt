@@ -1,10 +1,20 @@
 package com.jonbott.learningrxjava.ModelLayer.NetworkLayer
 
+import com.github.kittinunf.result.Result
 import com.jonbott.datalayerexample.DataLayer.NetworkLayer.EndpointInterfaces.JsonPlaceHolder
 import com.jonbott.datalayerexample.DataLayer.NetworkLayer.Helpers.ServiceGenerator
+import com.jonbott.learningrxjava.Common.EmptyDescriptionException
+import com.jonbott.learningrxjava.Common.NullBox
 import com.jonbott.learningrxjava.Common.StringLambda
 import com.jonbott.learningrxjava.Common.VoidLambda
 import com.jonbott.learningrxjava.ModelLayer.Entities.Message
+import com.jonbott.learningrxjava.ModelLayer.Entities.Person
+import io.reactivex.Observable
+import io.reactivex.Single
+import io.reactivex.internal.operators.observable.ObservableAll
+import io.reactivex.rxkotlin.zip
+import kotlinx.coroutines.experimental.delay
+import kotlinx.coroutines.experimental.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -74,6 +84,21 @@ class NetworkLayer {
         })
     }
 
+    //region EndPoint - Fully Rx Way
+    fun getMessageRx(articleId: String): Single<Message> {
+        return placeHolderApi.getMessageRx(articleId)
+    }
+
+    fun getMessagesRx(): Single<List<Message>> {
+        return placeHolderApi.getMessagesRx()
+    }
+
+    fun postMessageRx(message: Message): Single<Message> {
+        return placeHolderApi.postMessageRx(message)
+    }
+
+    //endregion
+
     private fun <T> parseResponse(response: Response<T>?): T? {
         val article = response?.body() ?: null
 
@@ -104,4 +129,77 @@ class NetworkLayer {
 
     //endregion
 
+    //region Task Example
+
+    //Make on Observable for each person in a list
+    fun loadInfoFor(people: List<Person>): Observable<List<String>> {
+        //For each person make a network call
+        val networkObservables = people.map(::buildGetInfoNetworkCallFor)
+
+        //when all server results have returned zip observables into a single observable
+        return networkObservables.zip { list ->
+            list.filter { box -> box.value != null }
+                    .map { it.value!! }
+        }
+    }
+
+    //Wrap task in Reactive Observable
+    //This pattern is used often for units of work
+    private fun buildGetInfoNetworkCallFor(person: Person): Observable<NullBox<String>> {
+
+        return Observable.create<NullBox<String>> {
+            observer ->
+            // Execute Request - Do actual work here
+            getInfoFor(person) {
+                result ->
+                result.fold(
+                        {
+                            info ->
+                            observer.onNext(info)
+                            observer.onComplete()
+                        },
+                        {
+                            error ->
+                            //do something with error or just pass it on
+                            observer.onError(error)
+                        })
+            }
+        }.onErrorReturn { NullBox(null) }
+    }
+
+    //Create a Network Task
+    fun getInfoFor(person: Person, finished: (Result<NullBox<String>, Exception>) -> Unit) {
+        // Execute on Background Thread
+        // Do your task here
+        launch {
+            println("start network call $person")
+            val randomTime = person.age * 1000 //to miliseconds
+            delay(randomTime)
+            println("finished network call: $person")
+
+            //just randomly make odd people null
+            //var result = Result.of(NullBox(person.toString()))
+
+            // Adding Nulls
+            val isEven = person.age % 2 == 0
+            var result = if (isEven) {
+                Result.of(NullBox(person.firstName))
+            } else {
+                Result.of(NullBox<String>(null))
+            }
+
+            // Adding Exceptions
+            if (person.age > 3) {
+                result = Result.of {throw EmptyDescriptionException("This person's age is odd")}
+            }
+
+            // Result.Failure
+
+
+            finished(result)
+        }
+
+    }
+
+    //endregion
 }

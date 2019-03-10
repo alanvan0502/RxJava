@@ -43,11 +43,11 @@ class PersistenceLayer {
 
     fun loadAllPhotoDescriptions(finished: PhotoDescriptionLambda) { //async api
 
-        databaseReady.subscribe(onNext@ { isReady ->
+        databaseReady.subscribe onNext@ { isReady ->
             if (!isReady) return@onNext
 
             getDescriptionsWithCoroutines(finished)
-        }).disposedBy(bag)
+        }.disposedBy(bag)
     }
 
     private fun getDescriptionsWithCoroutines(finished: PhotoDescriptionLambda) {

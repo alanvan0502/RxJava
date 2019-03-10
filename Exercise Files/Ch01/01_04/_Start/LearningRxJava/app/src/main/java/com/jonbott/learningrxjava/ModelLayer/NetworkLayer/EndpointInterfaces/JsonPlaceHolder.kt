@@ -22,4 +22,17 @@ interface JsonPlaceHolder {
 
     //endregion
 
+    //region Rx Methods
+
+    @GET("/posts")
+    fun getMessagesRx(): Single<List<Message>>
+
+    @GET("/posts/{articleId}")
+    fun getMessageRx(@Path("articleId") articleId: String): Single<Message>
+
+    @POST("/posts")
+    fun postMessageRx(@Body message: Message): Single<Message>
+
+    //endregion
+
 }

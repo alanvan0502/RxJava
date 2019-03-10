@@ -2,6 +2,7 @@ package com.jonbott.learningrxjava.Activities.TasksExample
 
 import com.jonbott.learningrxjava.ModelLayer.Entities.Person
 import com.jonbott.learningrxjava.ModelLayer.ModelLayer
+import io.reactivex.Observable
 
 class TasksExamplePresenter {
 
@@ -12,4 +13,8 @@ class TasksExamplePresenter {
                                 Person("Napoleon","Nicols",    3),
                                 Person("Jinny",   "Jordahl",   4),
                                 Person("Wendi",   "Woodhouse", 5))
+
+    fun loadPeopleInfo(): Observable<List<String>> {
+        return modelLayer.loadInfoFor(people)
+    }
 }
